@@ -5,7 +5,6 @@ def heuristic(current, goal):
     return abs(current[0] - goal[0]) + abs(current[1] - goal[1])
 
 def astar(grid_size, obstacles, start, goal):
-    grid = [[0 for _ in range(grid_size)] for _ in range(grid_size)]
     open_set = []
     closed_set = set()
     heapq.heappush(open_set, (0, start, None))
@@ -61,52 +60,54 @@ def image_into_maze(image, cell_count, grid_size):
                 end = [x, y]
     return [obsticles, start, end]
 
+def optimize_instructions(instructions):
+    current_forward = 0
+    optimized_instructions = []
+    instructions.append("end")
+    
+    for instruction in range(len(instructions)-1):
+        if instructions[instruction] == "Go forward":
+            current_forward += 1
+        if not instructions[instruction+1] == "Go forward":
+            optimized_instructions.append("Go forward x" + str(current_forward))
+            optimized_instructions.append(instructions[instruction+1])
+            current_forward = 0
+            
+    optimized_instructions.pop()
+    
+    return optimized_instructions
+
+def append_instructions(instructions, facing, to_left, to_right, new_facing):
+    if facing == to_left:
+        instructions.append("Turn left")
+    if facing == to_right:
+        instructions.append("Turn right")
+        
+    instructions.append("Go forward")
+    return [instructions, new_facing]
+
 def path_into_instructions(path):
     instructions = []
+    
     facing = [path[1][0] - path[0][0], path[1][1] - path[0][1]]
     for position in range(0, len(path)-1):
         if path[position][0] < path[position+1][0]: #Go right
-            if facing == [0, 1]:
-                instructions.append("left")
-            if facing == [0, -1]:
-                instructions.append("right")
-                
-            instructions.append("forward")
-            facing = [1, 0]
+            instructions, facing = append_instructions(instructions, facing, [0, 1], [0, -1], [1, 0])
             continue
         
         if path[position][0] > path[position+1][0]: #Go left
-            if facing == [0, 1]:
-                instructions.append("right")
-            if facing == [0, -1]:
-                instructions.append("left")
-                
-            instructions.append("forward")
-            facing = [-1, 0]
+            instructions, facing = append_instructions(instructions, facing, [0, -1], [0, 1], [-1, 0])
             continue
         
         if path[position][1] < path[position+1][1]: #Go down
-            if facing == [-1, 0]:
-                instructions.append("left")
-            if facing == [1, 0]:
-                instructions.append("right")
-                
-            instructions.append("forward")
-            facing = [0, 1]
+            instructions, facing = append_instructions(instructions, facing, [-1, 0], [1, 0], [0, 1])
             continue
         
         if path[position][1] > path[position+1][1]: #Go up
-            if facing == [-1, 0]:
-                instructions.append("right")
-            if facing == [1, 0]:
-                instructions.append("left")
-                
-            instructions.append("forward")
-            facing = [0, -1]
+            instructions, facing = append_instructions(instructions, facing, [1, 0], [-1, 0], [0, -1])
             continue
-
-        
-    return instructions
+    
+    return optimize_instructions(instructions)
         
         
 def image_into_instructions(grid_size, image_location):
@@ -114,7 +115,6 @@ def image_into_instructions(grid_size, image_location):
     image_size = image.size[0]
     cell_count = int(image_size/grid_size)
     obsticles, start, end = image_into_maze(image, cell_count, grid_size)
-    print(obsticles, start, end)
     
     path = astar(grid_size, obsticles, start, end)
     instructions = path_into_instructions(path)
@@ -124,7 +124,7 @@ def image_into_instructions(grid_size, image_location):
     for y in range(0, cell_count):
         for x in range(0, cell_count):
             if [x, y] in obsticles:
-                print("@", end=" ")
+                print("#", end=" ")
                 continue
             if [x, y] == start:
                 print("s", end=" ")
